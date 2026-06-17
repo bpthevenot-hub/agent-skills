@@ -22,3 +22,4 @@ dist/
 # Generated skills in any dot directory
 .*/skills/
 .claude/
+AGENTS.md
