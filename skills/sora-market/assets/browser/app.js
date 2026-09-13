@@ -87,6 +87,7 @@ const els = {
 	panel: document.querySelector("#panel"),
 	toast: document.querySelector("#toast"),
 	positions: document.querySelector("#positions"),
+	toolbar: document.querySelector("#toolbar"),
 };
 
 function selectedMarket() {
@@ -210,12 +211,14 @@ function renderBoard() {
 	if (state.view === "portfolio") {
 		els.board.hidden = true;
 		els.positions.hidden = false;
+		els.toolbar.hidden = true;
 		renderPositions();
 		return;
 	}
 
 	els.board.hidden = false;
 	els.positions.hidden = true;
+	els.toolbar.hidden = false;
 	const markets = visibleMarkets();
 	if (markets.length === 0) {
 		els.board.innerHTML = `
