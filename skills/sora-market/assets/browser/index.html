@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sora Market Browser</title>
+    <meta
+      name="description"
+      content="Navigateur de marchés de prédiction Sora Market — paper trading."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Instrument+Sans:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="brand">
+        <div class="mark" aria-hidden="true">SM</div>
+        <div>
+          <h1>Sora Market</h1>
+          <p>Browser · paper trading</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <label class="search">
+          <span aria-hidden="true">/</span>
+          <span class="sr-only">Rechercher un marché</span>
+          <input
+            id="search"
+            type="search"
+            placeholder="Rechercher un marché, une équipe, un actif…"
+            autocomplete="off"
+          />
+        </label>
+        <div id="views">
+          <button class="nav-btn" type="button" data-view="markets" aria-pressed="true">
+            Marchés
+          </button>
+          <button class="nav-btn" type="button" data-view="watchlist">Favoris</button>
+          <button class="nav-btn" type="button" data-view="portfolio">Portefeuille</button>
+        </div>
+        <div class="cash-pill" id="cash">Caisse <strong>$1 000,00</strong></div>
+      </div>
+    </header>
+
+    <section class="stats" id="stats" aria-label="Indicateurs"></section>
+
+    <div class="toolbar">
+      <div class="chips" id="chips" aria-label="Catégories"></div>
+      <div class="tabs" id="tabs" aria-label="Statut"></div>
+      <label class="sort">
+        <span class="sr-only">Trier</span>
+        <select id="sort">
+          <option value="volume">Volume</option>
+          <option value="ending">Fin proche</option>
+          <option value="newest">Plus récents</option>
+        </select>
+      </label>
+    </div>
+
+    <main>
+      <section class="board" id="board" aria-live="polite"></section>
+      <section class="positions" id="positions" hidden></section>
+    </main>
+
+    <div
+      class="drawer"
+      id="drawer"
+      aria-hidden="true"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="drawer-title"
+    >
+      <aside class="panel" id="panel"></aside>
+    </div>
+
+    <div class="toast" id="toast" role="status"></div>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

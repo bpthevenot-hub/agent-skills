@@ -22,6 +22,13 @@
 			"source": "./",
 			"strict": false,
 			"skills": ["./skills/supabase-postgres-best-practices"]
+		},
+		{
+			"name": "sora-market",
+			"description": "Build and operate the Sora Market Browser for prediction-market boards, order tickets, watchlists, and paper portfolios.",
+			"source": "./",
+			"strict": false,
+			"skills": ["./skills/sora-market"]
 		}
 	]
 }

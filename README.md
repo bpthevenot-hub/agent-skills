@@ -64,6 +64,26 @@ integrations.
 </details>
 
 <details>
+<summary><strong>sora-market</strong></summary>
+
+Sora Market Browser: a paper-trading prediction-market UI and the skill
+that keeps its board, order ticket, and local portfolio consistent.
+
+**Use when:**
+
+- Building or extending a Sora Market / Soro.Market style market browser
+- Implementing market cards, filters, an order ticket, or a watchlist
+- Verifying prediction-market UX in a real browser
+
+Serve the UI with:
+
+```bash
+python3 -m http.server 4173 --directory skills/sora-market/assets/browser
+```
+
+</details>
+
+<details>
 <summary><strong>supabase-postgres-best-practices</strong></summary>
 
 Postgres performance optimization guidelines from Supabase. Contains references
