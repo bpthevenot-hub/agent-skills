@@ -1,57 +1,49 @@
 import {
-	STARTING_CASH,
-	claimAmount,
-	formatCompactUsd,
-	formatUsd,
-	impliedPercent,
-	parseStake,
-	potentialPayout,
-	potentialProfit,
-	validateTicket,
-} from "./payout.js";
+	cartCount,
+	cartSubtotal,
+	cartTotal,
+	discountPercent,
+	formatMoney,
+	parseQty,
+	setLineQty,
+	shippingCost,
+	upsertLine,
+	validateAdd,
+	validateCheckout,
+} from "./cart.js";
 
 const KEYS = {
-	cash: "sora-market:cash",
-	positions: "sora-market:positions",
-	watchlist: "sora-market:watchlist",
+	cart: "sora-market:cart",
+	wishlist: "sora-market:wishlist",
+	orders: "sora-market:orders",
 };
 
 const CATEGORIES = [
-	["all", "Tous"],
+	["all", "Tout"],
+	["electronique", "Électronique"],
+	["mode", "Mode"],
+	["maison", "Maison"],
+	["beaute", "Beauté"],
 	["sport", "Sport"],
-	["crypto", "Crypto"],
-	["tech", "Tech"],
-	["politics", "Politique"],
-	["culture", "Culture"],
-];
-
-const STATUSES = [
-	["all", "Tous"],
-	["live", "Live"],
-	["upcoming", "À venir"],
-	["settled", "Réglés"],
+	["auto", "Auto"],
+	["jouets", "Jouets"],
+	["jardin", "Jardin"],
 ];
 
 const state = {
-	markets: [],
+	products: [],
 	query: "",
 	category: "all",
-	status: "all",
-	sort: "volume",
-	view: "markets",
+	freeShipping: false,
+	minRating: 0,
+	sort: "orders",
+	view: "catalog",
 	selectedId: null,
-	outcomeId: null,
-	stake: "25",
+	variantId: null,
+	qty: "1",
 	error: "",
-	toast: "",
+	checkout: { name: "", city: "", address: "" },
 };
-
-function loadCash() {
-	const raw = localStorage.getItem(KEYS.cash);
-	if (raw === null) return STARTING_CASH;
-	const value = Number(raw);
-	return Number.isFinite(value) ? value : STARTING_CASH;
-}
 
 function loadJson(key, fallback) {
 	try {
@@ -64,438 +56,506 @@ function loadJson(key, fallback) {
 	}
 }
 
-function savePortfolio(cash, positions, watchlist) {
-	localStorage.setItem(KEYS.cash, String(cash));
-	localStorage.setItem(KEYS.positions, JSON.stringify(positions));
-	localStorage.setItem(KEYS.watchlist, JSON.stringify(watchlist));
+function saveAll() {
+	localStorage.setItem(KEYS.cart, JSON.stringify(cart));
+	localStorage.setItem(KEYS.wishlist, JSON.stringify(wishlist));
+	localStorage.setItem(KEYS.orders, JSON.stringify(orders));
 }
 
-let cash = loadCash();
-let positions = loadJson(KEYS.positions, []);
-let watchlist = loadJson(KEYS.watchlist, []);
+let cart = loadJson(KEYS.cart, []);
+let wishlist = loadJson(KEYS.wishlist, []);
+let orders = loadJson(KEYS.orders, []);
 
 const els = {
 	search: document.querySelector("#search"),
-	cash: document.querySelector("#cash"),
-	stats: document.querySelector("#stats"),
-	chips: document.querySelector("#chips"),
-	tabs: document.querySelector("#tabs"),
-	sort: document.querySelector("#sort"),
-	board: document.querySelector("#board"),
-	views: document.querySelector("#views"),
-	drawer: document.querySelector("#drawer"),
-	panel: document.querySelector("#panel"),
-	toast: document.querySelector("#toast"),
-	positions: document.querySelector("#positions"),
+	cats: document.querySelector("#cats"),
+	hero: document.querySelector("#hero"),
+	flash: document.querySelector("#flash"),
+	flashRow: document.querySelector("#flash-row"),
 	toolbar: document.querySelector("#toolbar"),
+	grid: document.querySelector("#grid"),
+	page: document.querySelector("#page"),
+	overlay: document.querySelector("#overlay"),
+	sheet: document.querySelector("#sheet"),
+	toast: document.querySelector("#toast"),
+	cartCount: document.querySelector("#cart-count"),
+	wishCount: document.querySelector("#wish-count"),
+	shipFilter: document.querySelector("#ship-filter"),
+	ratingFilter: document.querySelector("#rating-filter"),
+	sort: document.querySelector("#sort"),
 };
 
-function selectedMarket() {
-	return state.markets.find((market) => market.id === state.selectedId) ?? null;
+function productById(id) {
+	return state.products.find((product) => product.id === id) ?? null;
 }
 
-function selectedOutcome(market = selectedMarket()) {
-	return market?.outcomes.find((outcome) => outcome.id === state.outcomeId) ?? null;
+function selectedProduct() {
+	return productById(state.selectedId);
 }
 
-function visibleMarkets() {
+function visibleProducts(source = state.products) {
 	const needle = state.query.trim().toLowerCase();
-	const filtered = state.markets.filter((market) => {
-		const matchesQuery =
-			!needle ||
-			market.question.toLowerCase().includes(needle) ||
-			market.outcomes.some((outcome) =>
-				outcome.label.toLowerCase().includes(needle),
-			);
-		const matchesCategory =
-			state.category === "all" || market.category === state.category;
-		const matchesStatus = state.status === "all" || market.status === state.status;
-		const matchesWatch =
-			state.view !== "watchlist" || watchlist.includes(market.id);
-		return matchesQuery && matchesCategory && matchesStatus && matchesWatch;
+	const filtered = source.filter((product) => {
+		const haystack = `${product.title} ${product.store} ${product.category}`.toLowerCase();
+		const matchesQuery = !needle || haystack.includes(needle);
+		const matchesCategory = state.category === "all" || product.category === state.category;
+		const matchesShip = !state.freeShipping || product.freeShipping;
+		const matchesRating = product.rating >= state.minRating;
+		return matchesQuery && matchesCategory && matchesShip && matchesRating;
 	});
-
 	return [...filtered].sort((a, b) => {
-		if (state.sort === "ending") {
-			return new Date(a.closeAt).getTime() - new Date(b.closeAt).getTime();
+		if (state.sort === "price-asc") return a.price - b.price;
+		if (state.sort === "price-desc") return b.price - a.price;
+		if (state.sort === "discount") {
+			return discountPercent(b.price, b.compareAt) - discountPercent(a.price, a.compareAt);
 		}
-		if (state.sort === "newest") {
-			return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-		}
-		return b.volume - a.volume;
+		return b.orders - a.orders;
 	});
-}
-
-function statusLabel(status) {
-	if (status === "live") return "Live";
-	if (status === "upcoming") return "À venir";
-	return "Réglé";
-}
-
-function timeLabel(iso) {
-	const date = new Date(iso);
-	if (Number.isNaN(date.getTime())) return "Date inconnue";
-	return new Intl.DateTimeFormat("fr-FR", {
-		day: "numeric",
-		month: "short",
-		hour: "2-digit",
-		minute: "2-digit",
-	}).format(date);
 }
 
 function showToast(message) {
-	state.toast = message;
 	els.toast.textContent = message;
 	els.toast.classList.toggle("show", Boolean(message));
 	if (message) {
 		window.setTimeout(() => {
-			if (state.toast === message) showToast("");
-		}, 2800);
+			if (els.toast.textContent === message) showToast("");
+		}, 2600);
 	}
 }
 
 function renderHeader() {
-	els.cash.innerHTML = `Caisse <strong>${formatUsd(cash)}</strong>`;
+	els.cartCount.textContent = String(cartCount(cart));
+	els.wishCount.textContent = String(wishlist.length);
 }
 
-function renderStats() {
-	const live = state.markets.filter((market) => market.status === "live").length;
-	const volume = state.markets.reduce((sum, market) => sum + market.volume, 0);
-	const open = state.markets.filter((market) => market.status !== "settled").length;
-	els.stats.innerHTML = `
-    <div class="stat"><span>Volume affiché</span><strong>${formatCompactUsd(volume)}</strong></div>
-    <div class="stat"><span>Marchés live</span><strong>${live}</strong></div>
-    <div class="stat"><span>Marchés ouverts</span><strong>${open}</strong></div>
-    <div class="stat"><span>Positions</span><strong>${positions.length}</strong></div>
-  `;
-}
-
-function renderToolbar() {
-	els.chips.innerHTML = CATEGORIES.map(
+function renderCats() {
+	els.cats.innerHTML = CATEGORIES.map(
 		([id, label]) =>
-			`<button class="chip" type="button" data-category="${id}" aria-pressed="${state.category === id}">${label}</button>`,
+			`<button type="button" data-category="${id}" aria-pressed="${state.category === id}">${label}</button>`,
 	).join("");
-	els.tabs.innerHTML = STATUSES.map(
-		([id, label]) =>
-			`<button class="tab" type="button" data-status="${id}" aria-pressed="${state.status === id}">${label}</button>`,
-	).join("");
-	els.sort.value = state.sort;
 }
 
-function renderCard(market) {
-	const watched = watchlist.includes(market.id);
-	const outcomes = market.outcomes
-		.slice(0, 3)
-		.map(
-			(outcome) =>
-				`<span class="outcome"><small>${outcome.label}</small><strong>${impliedPercent(outcome.price)}</strong></span>`,
-		)
-		.join("");
+function cardHtml(product, compact = false) {
+	const off = discountPercent(product.price, product.compareAt);
 	return `
-    <button class="card" type="button" data-open="${market.id}">
-      <div class="card-top">
-        <span>${market.category}</span>
-        <span class="status ${market.status}">${statusLabel(market.status)}</span>
-      </div>
-      <h2>${market.question}</h2>
-      <div class="outcomes">${outcomes}</div>
-      <div class="meta">
-        <span>Vol. ${formatCompactUsd(market.volume)}</span>
-        <span>${watched ? "★ suivi" : timeLabel(market.closeAt)}</span>
+    <button class="card" type="button" data-open="${product.id}">
+      <div class="thumb" style="background:${product.accent}22">${product.emoji}</div>
+      <div class="card-body">
+        <strong>${product.title}</strong>
+        <p class="price">
+          ${formatMoney(product.price)}
+          <span class="compare">${formatMoney(product.compareAt)}</span>
+          ${off ? `<span class="off">-${off}%</span>` : ""}
+        </p>
+        ${compact ? "" : `<p class="meta">★ ${product.rating.toFixed(1)} · ${product.orders.toLocaleString("fr-FR")} commandes</p>`}
+        <p class="ship ${product.freeShipping ? "free" : ""}">
+          ${product.freeShipping ? "Livraison gratuite" : `Expédié de ${product.shipsFrom}`}
+        </p>
       </div>
     </button>
   `;
 }
 
-function renderBoard() {
-	if (state.view === "portfolio") {
-		els.board.hidden = true;
-		els.positions.hidden = false;
-		els.toolbar.hidden = true;
-		renderPositions();
-		return;
-	}
-
-	els.board.hidden = false;
-	els.positions.hidden = true;
+function renderCatalog() {
+	els.hero.hidden = false;
 	els.toolbar.hidden = false;
-	const markets = visibleMarkets();
-	if (markets.length === 0) {
-		els.board.innerHTML = `
+	els.grid.hidden = false;
+	els.page.hidden = true;
+	els.overlay.hidden = true;
+
+	const flash = visibleProducts(state.products.filter((product) => product.flash));
+	els.flash.hidden = flash.length === 0;
+	els.flashRow.innerHTML = flash.slice(0, 4).map((product) => cardHtml(product, true)).join("");
+
+	const products = visibleProducts();
+	if (products.length === 0) {
+		els.grid.innerHTML = `
       <div class="empty" role="status">
-        <h2>Aucun marché</h2>
+        <h2>Aucun produit</h2>
         <p>Aucun résultat pour ces filtres. Efface la recherche ou change de catégorie.</p>
-      </div>
-    `;
+      </div>`;
 		return;
 	}
-	els.board.innerHTML = markets.map(renderCard).join("");
+	els.grid.innerHTML = products.map((product) => cardHtml(product)).join("");
 }
 
-function renderPositions() {
-	if (positions.length === 0) {
-		els.positions.innerHTML = `
-      <div class="empty" role="status">
-        <h2>Portefeuille vide</h2>
-        <p>Place une mise papier depuis un marché live pour la voir ici.</p>
-      </div>
-    `;
-		return;
-	}
-
-	els.positions.innerHTML = positions
-		.map((position) => {
-			const market = state.markets.find((item) => item.id === position.marketId);
-			const outcome = market?.outcomes.find((item) => item.id === position.outcomeId);
-			const settled = market?.status === "settled";
-			const won = settled && position.outcomeId === market.resolvedOutcomeId;
-			const claim = claimAmount(position, market);
-			const action = settled
-				? position.claimed
-					? `<p>Réclamé · ${formatUsd(position.claimedAmount ?? 0)}</p>`
-					: `<button class="primary" type="button" data-claim="${position.id}">Réclamer ${formatUsd(claim)}</button>`
-				: `<p>Gain potentiel ${formatUsd(potentialPayout(position.stake, position.price))}</p>`;
-			return `
-        <article class="position">
-          <p class="status ${market?.status ?? ""}">${settled ? (won ? "Gagné" : "Perdu") : "Ouvert"}</p>
-          <h2>${market?.question ?? "Marché retiré"}</h2>
-          <p>${outcome?.label ?? position.outcomeId} · mise ${formatUsd(position.stake)}</p>
-          ${action}
-        </article>
-      `;
-		})
-		.join("");
+function openProduct(id) {
+	const product = productById(id);
+	if (!product) return;
+	state.selectedId = id;
+	state.variantId = product.variants[0]?.id ?? null;
+	state.qty = "1";
+	state.error = "";
+	renderProduct();
 }
 
-function renderPanel() {
-	const market = selectedMarket();
-	if (!market) {
-		els.drawer.classList.remove("open");
-		els.drawer.setAttribute("aria-hidden", "true");
+function renderProduct() {
+	const product = selectedProduct();
+	if (!product) {
+		els.overlay.hidden = true;
 		return;
 	}
-
-	const outcome = selectedOutcome(market) ?? market.outcomes[0];
-	state.outcomeId = outcome.id;
-	const stake = parseStake(state.stake);
-	const payout = potentialPayout(stake, outcome.price);
-	const profit = potentialProfit(stake, outcome.price);
-	const watched = watchlist.includes(market.id);
-	const disabled = market.status === "settled";
-
-	els.drawer.classList.add("open");
-	els.drawer.setAttribute("aria-hidden", "false");
-	els.panel.innerHTML = `
-    <div class="panel-head">
-      <div>
-        <p class="status ${market.status}">${statusLabel(market.status)}</p>
-        <h2 id="drawer-title">${market.question}</h2>
-      </div>
+	const wished = wishlist.includes(product.id);
+	const variant = product.variants.find((item) => item.id === state.variantId);
+	els.overlay.hidden = false;
+	els.sheet.innerHTML = `
+    <div class="sheet-head">
+      <div class="thumb" style="width:120px;height:120px;border-radius:16px;background:${product.accent}22">${product.emoji}</div>
       <button class="close" type="button" data-close>Fermer</button>
     </div>
-    <div class="outcomes">
-      ${market.outcomes
+    <h2>${product.title}</h2>
+    <p class="price">${formatMoney(product.price)} <span class="compare">${formatMoney(product.compareAt)}</span></p>
+    <p class="meta">★ ${product.rating.toFixed(1)} · ${product.orders.toLocaleString("fr-FR")} commandes · ${product.store}</p>
+    <p class="ship ${product.freeShipping ? "free" : ""}">
+      ${product.freeShipping ? "Livraison gratuite" : `Frais selon panier`} · ${product.shipsFrom} · ${product.deliveryMin}–${product.deliveryMax} jours
+    </p>
+    <div class="variants">
+      ${product.variants
 				.map(
-					(item) => `
-        <button class="outcome" type="button" data-outcome="${item.id}" aria-pressed="${item.id === outcome.id}">
-          <small>${item.label}</small>
-          <strong>${impliedPercent(item.price)}</strong>
-        </button>`,
+					(item) =>
+						`<button class="chip" type="button" data-variant="${item.id}" aria-pressed="${item.id === state.variantId}">${item.label}</button>`,
 				)
 				.join("")}
     </div>
-    <div class="ticket-box">
-      <label for="stake">Mise (USD)</label>
-      <input id="stake" inputmode="decimal" value="${state.stake}" ${disabled ? "disabled" : ""} />
-      <div class="figures">
-        <div><small>Paiement potentiel</small><strong id="payout">${formatUsd(payout)}</strong></div>
-        <div><small>Profit potentiel</small><strong id="profit">${formatUsd(profit)}</strong></div>
-      </div>
-      <p class="error" id="ticket-error">${state.error}</p>
-      <button class="primary" id="place" type="button" ${disabled ? "disabled" : ""}>Miser</button>
+    <ul>${product.bullets.map((item) => `<li>${item}</li>`).join("")}</ul>
+    <div class="qty-row">
+      <label>Qté <input id="qty" type="number" min="1" max="${product.stock}" value="${state.qty}" /></label>
+      <span>${product.stock} en stock</span>
     </div>
-    <button class="ghost" type="button" data-watch>
-      ${watched ? "Retirer des favoris" : "Ajouter aux favoris"}
-    </button>
-    <p class="meta">Volume ${formatCompactUsd(market.volume)} · clôture ${timeLabel(market.closeAt)}</p>
+    <p class="error">${state.error}</p>
+    <div class="row">
+      <button class="ghost" type="button" data-wish>${wished ? "Retirer des favoris" : "Ajouter aux favoris"}</button>
+      <button class="primary" type="button" data-add>Ajouter au panier${variant ? ` · ${variant.label}` : ""}</button>
+      <button class="primary buy" type="button" data-buy>Acheter</button>
+    </div>
   `;
-	document.querySelector("#stake")?.focus();
+}
+
+function renderCart() {
+	els.hero.hidden = true;
+	els.flash.hidden = true;
+	els.toolbar.hidden = true;
+	els.grid.hidden = true;
+	els.overlay.hidden = true;
+	els.page.hidden = false;
+
+	if (cart.length === 0) {
+		els.page.innerHTML = `
+      <div class="empty">
+        <h2>Panier vide</h2>
+        <p>Ajoute un article depuis le catalogue pour le retrouver ici.</p>
+        <button class="primary" type="button" data-view="catalog">Retour boutique</button>
+      </div>`;
+		return;
+	}
+
+	const subtotal = cartSubtotal(cart);
+	const shipping = shippingCost(subtotal);
+	els.page.innerHTML = `
+    <h2>Panier</h2>
+    ${cart
+			.map((line) => {
+				const product = productById(line.productId);
+				const key = `${line.productId}:${line.variantId}`;
+				return `
+          <div class="cart-line">
+            <div>
+              <strong>${product?.title ?? "Article retiré"}</strong>
+              <p class="meta">${line.variantLabel} · ${formatMoney(line.price)}</p>
+            </div>
+            <label>Qté
+              <input data-qty="${key}" type="number" min="1" max="${product?.stock ?? line.qty}" value="${line.qty}" />
+            </label>
+            <strong>${formatMoney(line.price * line.qty)}</strong>
+          </div>`;
+			})
+			.join("")}
+    <div class="totals">
+      <div class="row"><span>Sous-total</span><strong>${formatMoney(subtotal)}</strong></div>
+      <div class="row"><span>Livraison</span><strong>${shipping ? formatMoney(shipping) : "Offerte"}</strong></div>
+      <div class="row"><span>Total</span><strong>${formatMoney(cartTotal(cart))}</strong></div>
+    </div>
+    <button class="primary buy" type="button" data-view="checkout">Passer commande</button>
+  `;
+}
+
+function renderWishlist() {
+	els.hero.hidden = true;
+	els.flash.hidden = true;
+	els.toolbar.hidden = true;
+	els.grid.hidden = false;
+	els.page.hidden = true;
+	els.overlay.hidden = true;
+	const products = state.products.filter((product) => wishlist.includes(product.id));
+	if (products.length === 0) {
+		els.grid.innerHTML = `
+      <div class="empty">
+        <h2>Aucun favori</h2>
+        <p>Ajoute un cœur depuis une fiche produit.</p>
+      </div>`;
+		return;
+	}
+	els.grid.innerHTML = products.map((product) => cardHtml(product)).join("");
+}
+
+function renderCheckout() {
+	els.hero.hidden = true;
+	els.flash.hidden = true;
+	els.toolbar.hidden = true;
+	els.grid.hidden = true;
+	els.overlay.hidden = true;
+	els.page.hidden = false;
+	els.page.innerHTML = `
+    <h2>Commande</h2>
+    <p class="meta">Paiement démo — aucune carte n’est débitée.</p>
+    <p>Total à payer : <strong>${formatMoney(cartTotal(cart))}</strong></p>
+    <label>Nom<input id="name" value="${state.checkout.name}" /></label>
+    <label>Ville<input id="city" value="${state.checkout.city}" /></label>
+    <label>Adresse<input id="address" value="${state.checkout.address}" /></label>
+    <p class="error">${state.error}</p>
+    <button class="primary buy" type="button" data-place>Confirmer la commande</button>
+  `;
+}
+
+function renderOrders() {
+	els.hero.hidden = true;
+	els.flash.hidden = true;
+	els.toolbar.hidden = true;
+	els.grid.hidden = true;
+	els.overlay.hidden = true;
+	els.page.hidden = false;
+	if (orders.length === 0) {
+		els.page.innerHTML = `
+      <div class="empty">
+        <h2>Pas encore de commande</h2>
+        <p>Tes commandes démo apparaîtront ici.</p>
+      </div>`;
+		return;
+	}
+	els.page.innerHTML = `
+    <h2>Commandes</h2>
+    ${orders
+			.map(
+				(order) => `
+        <article class="cart-line">
+          <div>
+            <strong>${order.id}</strong>
+            <p class="meta">${new Date(order.createdAt).toLocaleString("fr-FR")} · ${order.city}</p>
+            <p>${order.lines.map((line) => `${line.title} ×${line.qty}`).join(" · ")}</p>
+          </div>
+          <strong>${formatMoney(order.total)}</strong>
+        </article>`,
+			)
+			.join("")}
+  `;
 }
 
 function render() {
 	renderHeader();
-	renderStats();
-	renderToolbar();
-	renderBoard();
-	renderPanel();
-	for (const button of els.views.querySelectorAll("[data-view]")) {
-		button.setAttribute("aria-pressed", String(button.dataset.view === state.view));
+	renderCats();
+	if (state.view === "cart") return renderCart();
+	if (state.view === "wishlist") return renderWishlist();
+	if (state.view === "checkout") return renderCheckout();
+	if (state.view === "orders") return renderOrders();
+	renderCatalog();
+}
+
+function addToCart(goCheckout = false) {
+	const product = selectedProduct();
+	const qty = parseQty(state.qty);
+	const error = validateAdd({ product, qty, variantId: state.variantId });
+	if (error) {
+		state.error = error;
+		renderProduct();
+		return;
 	}
-}
-
-function openMarket(id) {
-	const market = state.markets.find((item) => item.id === id);
-	if (!market) return;
-	state.selectedId = id;
-	state.outcomeId = market.outcomes[0]?.id ?? null;
+	const variant = product.variants.find((item) => item.id === state.variantId);
+	cart = upsertLine(cart, {
+		productId: product.id,
+		variantId: state.variantId,
+		variantLabel: variant?.label ?? "",
+		title: product.title,
+		price: product.price,
+		qty,
+	});
+	saveAll();
 	state.error = "";
+	showToast(`${product.title} ajouté au panier`);
+	if (goCheckout) {
+		state.view = "checkout";
+		els.overlay.hidden = true;
+	}
 	render();
 }
 
-function closeDrawer() {
-	state.selectedId = null;
-	state.outcomeId = null;
-	state.error = "";
+function toggleWish(id) {
+	wishlist = wishlist.includes(id)
+		? wishlist.filter((item) => item !== id)
+		: [...wishlist, id];
+	saveAll();
 	render();
+	if (state.selectedId) renderProduct();
 }
 
 function placeOrder() {
-	const market = selectedMarket();
-	const outcome = selectedOutcome(market);
-	const stake = parseStake(state.stake);
-	const error = validateTicket({ stake, cash, outcome, market });
+	const error = validateCheckout({
+		cart,
+		name: state.checkout.name,
+		city: state.checkout.city,
+	});
 	if (error) {
 		state.error = error;
-		renderPanel();
+		renderCheckout();
 		return;
 	}
-
-	cash -= stake;
-	positions = [
+	orders = [
 		{
-			id: `p-${Date.now()}`,
-			marketId: market.id,
-			outcomeId: outcome.id,
-			stake,
-			price: outcome.price,
+			id: `SM-${Date.now()}`,
 			createdAt: new Date().toISOString(),
-			claimed: false,
+			name: state.checkout.name.trim(),
+			city: state.checkout.city.trim(),
+			address: state.checkout.address.trim(),
+			total: cartTotal(cart),
+			lines: cart.map((line) => ({
+				title: line.title,
+				qty: line.qty,
+				price: line.price,
+			})),
 		},
-		...positions,
+		...orders,
 	];
-	savePortfolio(cash, positions, watchlist);
+	cart = [];
+	saveAll();
 	state.error = "";
-	showToast(`Mise de ${formatUsd(stake)} placée sur ${outcome.label}`);
-	render();
-}
-
-function claimPosition(id) {
-	const position = positions.find((item) => item.id === id);
-	const market = state.markets.find((item) => item.id === position?.marketId);
-	if (!position || !market || position.claimed) return;
-	const amount = claimAmount(position, market);
-	cash += amount;
-	positions = positions.map((item) =>
-		item.id === id ? { ...item, claimed: true, claimedAmount: amount } : item,
-	);
-	savePortfolio(cash, positions, watchlist);
-	showToast(amount > 0 ? `Gain crédité : ${formatUsd(amount)}` : "Position perdante clôturée");
-	render();
-}
-
-function toggleWatch(id) {
-	watchlist = watchlist.includes(id)
-		? watchlist.filter((item) => item !== id)
-		: [...watchlist, id];
-	savePortfolio(cash, positions, watchlist);
+	state.view = "orders";
+	showToast("Commande confirmée (démo)");
 	render();
 }
 
 function bind() {
 	els.search.addEventListener("input", (event) => {
 		state.query = event.target.value;
-		renderBoard();
+		if (state.view !== "catalog") state.view = "catalog";
+		render();
 	});
-	els.sort.addEventListener("change", (event) => {
-		state.sort = event.target.value;
-		renderBoard();
+	document.querySelector("#search-btn").addEventListener("click", () => {
+		state.view = "catalog";
+		render();
 	});
-	els.chips.addEventListener("click", (event) => {
+	els.cats.addEventListener("click", (event) => {
 		const button = event.target.closest("[data-category]");
 		if (!button) return;
 		state.category = button.dataset.category;
+		state.view = "catalog";
 		render();
 	});
-	els.tabs.addEventListener("click", (event) => {
-		const button = event.target.closest("[data-status]");
-		if (!button) return;
-		state.status = button.dataset.status;
+	els.shipFilter.addEventListener("change", (event) => {
+		state.freeShipping = event.target.checked;
+		state.view = "catalog";
 		render();
 	});
-	els.views.addEventListener("click", (event) => {
+	els.ratingFilter.addEventListener("change", (event) => {
+		state.minRating = Number(event.target.value);
+		render();
+	});
+	els.sort.addEventListener("change", (event) => {
+		state.sort = event.target.value;
+		render();
+	});
+	document.querySelector("#quick").addEventListener("click", (event) => {
 		const button = event.target.closest("[data-view]");
 		if (!button) return;
 		state.view = button.dataset.view;
-		if (state.view !== "markets") closeDrawer();
+		state.selectedId = null;
 		render();
 	});
-	els.board.addEventListener("click", (event) => {
+	document.querySelector(".logo").addEventListener("click", (event) => {
+		event.preventDefault();
+		state.view = "catalog";
+		state.category = "all";
+		state.query = "";
+		els.search.value = "";
+		render();
+	});
+	els.grid.addEventListener("click", (event) => {
 		const button = event.target.closest("[data-open]");
 		if (!button) return;
-		openMarket(button.dataset.open);
+		openProduct(button.dataset.open);
 	});
-	els.positions.addEventListener("click", (event) => {
-		const button = event.target.closest("[data-claim]");
+	els.flashRow.addEventListener("click", (event) => {
+		const button = event.target.closest("[data-open]");
 		if (!button) return;
-		claimPosition(button.dataset.claim);
+		openProduct(button.dataset.open);
 	});
-	els.drawer.addEventListener("click", (event) => {
-		if (event.target === els.drawer || event.target.closest("[data-close]")) {
-			closeDrawer();
+	els.overlay.addEventListener("click", (event) => {
+		if (event.target === els.overlay || event.target.closest("[data-close]")) {
+			state.selectedId = null;
+			els.overlay.hidden = true;
 			return;
 		}
-		const outcome = event.target.closest("[data-outcome]");
-		if (outcome) {
-			state.outcomeId = outcome.dataset.outcome;
+		const variant = event.target.closest("[data-variant]");
+		if (variant) {
+			state.variantId = variant.dataset.variant;
 			state.error = "";
-			renderPanel();
+			renderProduct();
 			return;
 		}
-		if (event.target.closest("[data-watch]")) {
-			toggleWatch(state.selectedId);
-			return;
-		}
-		if (event.target.closest("#place")) {
-			placeOrder();
-		}
+		if (event.target.closest("[data-wish]")) return toggleWish(state.selectedId);
+		if (event.target.closest("[data-add]")) return addToCart(false);
+		if (event.target.closest("[data-buy]")) return addToCart(true);
 	});
-	els.drawer.addEventListener("input", (event) => {
-		if (event.target.id !== "stake") return;
-		state.stake = event.target.value;
-		state.error = "";
-		const market = selectedMarket();
-		const outcome = selectedOutcome(market);
-		const stake = parseStake(state.stake);
-		const payout = document.querySelector("#payout");
-		const profit = document.querySelector("#profit");
-		if (payout) payout.textContent = formatUsd(potentialPayout(stake, outcome?.price));
-		if (profit) profit.textContent = formatUsd(potentialProfit(stake, outcome?.price));
+	els.overlay.addEventListener("input", (event) => {
+		if (event.target.id !== "qty") return;
+		state.qty = event.target.value;
+	});
+	els.page.addEventListener("click", (event) => {
+		const view = event.target.closest("[data-view]");
+		if (view) {
+			state.view = view.dataset.view;
+			render();
+			return;
+		}
+		if (event.target.closest("[data-place]")) placeOrder();
+	});
+	els.page.addEventListener("input", (event) => {
+		if (event.target.id === "name") state.checkout.name = event.target.value;
+		if (event.target.id === "city") state.checkout.city = event.target.value;
+		if (event.target.id === "address") state.checkout.address = event.target.value;
+		const qtyInput = event.target.closest("[data-qty]");
+		if (qtyInput) {
+			cart = setLineQty(cart, qtyInput.dataset.qty, parseQty(qtyInput.value));
+			saveAll();
+			renderCart();
+			renderHeader();
+		}
 	});
 	document.addEventListener("keydown", (event) => {
 		if (event.key === "/" && document.activeElement !== els.search) {
 			event.preventDefault();
 			els.search.focus();
 		}
-		if (event.key === "Escape") closeDrawer();
+		if (event.key === "Escape") {
+			state.selectedId = null;
+			els.overlay.hidden = true;
+		}
 	});
 }
 
 async function start() {
 	bind();
 	try {
-		const response = await fetch("./markets.json");
+		const response = await fetch("./products.json");
 		if (!response.ok) throw new Error("Catalogue indisponible");
-		state.markets = await response.json();
-		if (!Array.isArray(state.markets) || state.markets.length === 0) {
+		state.products = await response.json();
+		if (!Array.isArray(state.products) || state.products.length === 0) {
 			throw new Error("Catalogue vide");
 		}
 	} catch (error) {
-		els.board.innerHTML = `
+		els.grid.innerHTML = `
       <div class="empty" role="alert">
-        <h2>Impossible de charger les marchés</h2>
+        <h2>Impossible de charger la boutique</h2>
         <p>${error instanceof Error ? error.message : "Erreur inconnue"}</p>
-      </div>
-    `;
+      </div>`;
 		return;
 	}
 	render();

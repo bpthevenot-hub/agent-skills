@@ -1,21 +1,21 @@
 # Section Definitions
 
-This file defines the rule categories for the Sora Market Browser.
+This file defines the rule categories for the Sora Market storefront.
 
 ---
 
-## 1. Data Model (data)
+## 1. Product Model (data)
 **Impact:** CRITICAL
-**Description:** Market and outcome shapes that the board, ticket, and portfolio all share.
+**Description:** Shared product and variant shape for catalog, detail, and cart.
 
-## 2. Market Board (ui)
+## 2. Catalog (ui)
 **Impact:** HIGH
-**Description:** Listing, filtering, sorting, and empty states for the browser.
+**Description:** Search, categories, flash deals, and product cards.
 
-## 3. Order Ticket (ticket)
+## 3. Product Detail (detail)
 **Impact:** CRITICAL
-**Description:** Stake validation, payout math, and paper-order placement.
+**Description:** Variants, quantity, shipping promise, add to cart.
 
 ## 4. Persistence (persist)
 **Impact:** HIGH
-**Description:** localStorage portfolio, cash, and watchlist.
+**Description:** Cart, wishlist, and demo orders in localStorage.

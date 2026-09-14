@@ -1,86 +1,67 @@
 ---
 name: sora-market
 description: >
-  Build and operate the Sora Market Browser — a paper-trading prediction-market
-  UI for browsing live, upcoming, and settled event markets, filtering by
-  category, and placing simulated stakes. Use when creating or extending a
-  Sora Market / Soro.Market style browser, implementing market cards, an
-  order ticket, watchlists, a local portfolio, or verifying prediction-market
-  UX in a real browser.
+  Build and operate Sora Market, an AliExpress-style cross-border shopping
+  marketplace: product catalog, search, category filters, flash deals, product
+  detail, cart, wishlist, and checkout. Use when creating or extending a Sora
+  Market storefront, an AliExpress-like marketplace browser, product cards,
+  shipping badges, a shopping cart, or a demo checkout.
 metadata:
   author: supabase
   version: "0.0.0"
 ---
 
-# Sora Market Browser
+# Sora Market
 
-Ship a self-contained prediction-market browser. The playable UI lives in
-`assets/browser/` and needs no build step.
+Sora Market is a **shopping marketplace** in the AliExpress mold: browse
+goods, compare prices, add to cart, and place a demo order. The playable
+storefront lives in `assets/browser/` and needs no build step.
 
 ## Quick Start
-
-1. Serve the browser from the skill directory:
 
 ```bash
 python3 -m http.server 4173 --directory skills/sora-market/assets/browser
 ```
 
-2. Open `http://127.0.0.1:4173/` and exercise the full loop:
-   search → filter → open a market → enter a stake → place a paper order →
-   confirm the position in **Portefeuille**.
-
-3. Keep market data in `assets/browser/markets.json`. Keep stake math in
-   `assets/browser/payout.js`. Never duplicate payout formulas in the view.
+Open `http://127.0.0.1:4173/` and run the shopper loop: search → open a
+product → pick a variant → add to cart → checkout.
 
 ## Core Workflow
 
-1. **Load markets** from `markets.json`. Do not invent prices in the view layer.
-2. **Filter** by text, category (`all|sport|crypto|tech|politics|culture`),
-   and status (`live|upcoming|settled`).
-3. **Sort** by volume, time remaining, or newest.
-4. **Select a market** to open the detail drawer and order ticket.
-5. **Validate the ticket** before writing the portfolio:
-   - stake > 0
-   - stake ≤ available cash
-   - an outcome is selected
-   - the market is not settled
-6. **Persist** cash, positions, and watchlist in `localStorage` under the
-   `sora-market:` prefix.
-7. **Verify in a real browser** — a screenshot is not enough. Click, type,
-   submit, then open Portefeuille and Favoris.
+1. **Load products** from `products.json`. Do not invent prices in the view.
+2. **Filter** by text, category, free shipping, and minimum rating.
+3. **Sort** by orders, price, or discount.
+4. **Open a product** for gallery, variants, quantity, and shipping promise.
+5. **Validate the cart write** with `cart.js` before touching `localStorage`.
+6. **Persist** cart, wishlist, and orders under the `sora-market:` prefix.
+7. **Verify in a real browser** — click, type, add to cart, then open Panier
+   and Commandes.
 
 ## Data Model
 
-Each market must include `id`, `question`, `category`, `status`, `volume`,
-`closeAt`, `resolvedOutcomeId` (nullable), and `outcomes[]` with
-`id`, `label`, and `price` in `(0, 1)`.
-
-See [references/data-market-model.md](references/data-market-model.md).
+See [references/data-product-model.md](references/data-product-model.md).
 
 ## UI Contracts
 
-- **Market board**: See [references/ui-market-board.md](references/ui-market-board.md)
-- **Order ticket**: See [references/ui-order-ticket.md](references/ui-order-ticket.md)
-- **Portfolio**: See [references/persist-portfolio.md](references/persist-portfolio.md)
+- **Catalog**: [references/ui-catalog.md](references/ui-catalog.md)
+- **Product detail**: [references/ui-product-detail.md](references/ui-product-detail.md)
+- **Cart & checkout**: [references/persist-cart.md](references/persist-cart.md)
 
 ## Guardrails
 
-- Label the experience as **paper trading**. Never imply on-chain settlement
-  unless a real contract is wired.
-- Starting cash is `$1000`. Do not reset a user's stored portfolio on reload.
-- Settled markets are read-only. Offer **Réclamer** only when the stored
-  position matches `resolvedOutcomeId`.
-- Empty, error, and zero-result states must be visible — do not render a
-  blank board.
-- Keep the UI keyboard-friendly: `/` focuses search, `Escape` closes the
-  drawer.
+- This is a **demo storefront**. Never imply a real payment capture.
+- Prices are EUR. Free shipping starts at a **15 €** subtotal; otherwise add
+  **2,99 €**.
+- Quantity must stay between 1 and the product `stock`.
+- Empty catalog, empty cart, and empty wishlist need visible empty states.
+- Keep `/` focused on search and `Escape` closing overlays.
 
 ## Verification Checklist
 
-- Home board renders cards with prices, volume, and status.
-- Search and category chips update the same list (no stale state).
-- Opening a live market shows payout that updates as the stake changes.
-- An oversized stake is rejected without mutating cash.
-- A valid order decreases cash and appears under Portefeuille.
-- Watchlist add/remove survives reload.
-- Mobile viewport (375px) keeps the ticket usable in the drawer.
+- Home shows flash deals and a product grid with price, rating, and orders.
+- Search and category chips update the same list.
+- Product overlay lets the shopper change variant and quantity.
+- Add to cart increases the header badge and appears in Panier.
+- Checkout with an empty cart is blocked; a filled cart creates an order.
+- Wishlist add/remove survives reload.
+- Mobile viewport (375px) keeps search, cards, and cart usable.

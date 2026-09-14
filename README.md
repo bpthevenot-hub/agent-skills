@@ -66,14 +66,14 @@ integrations.
 <details>
 <summary><strong>sora-market</strong></summary>
 
-Sora Market Browser: a paper-trading prediction-market UI and the skill
-that keeps its board, order ticket, and local portfolio consistent.
+Sora Market: an AliExpress-style shopping marketplace (catalog, flash
+deals, product detail, cart, wishlist, and demo checkout).
 
 **Use when:**
 
-- Building or extending a Sora Market / Soro.Market style market browser
-- Implementing market cards, filters, an order ticket, or a watchlist
-- Verifying prediction-market UX in a real browser
+- Building or extending a Sora Market / AliExpress-like storefront
+- Implementing product cards, search, shipping badges, or a cart
+- Verifying marketplace UX in a real browser
 
 Serve the UI with:
 
