@@ -14,7 +14,21 @@
 			"description": "Postgres performance optimization and best practices. Use when writing, reviewing, or optimizing Postgres queries, schema designs, or database configurations.",
 			"source": "./",
 			"strict": false,
-			"skills": ["./skills/postgres-best-practices"]
+			"skills": ["./skills/supabase-postgres-best-practices"]
+		},
+		{
+			"name": "using-supabase",
+			"description": "Private guide for building applications with Supabase: setup, auth, database, storage, edge functions, realtime, client libraries, and CLI.",
+			"source": "./",
+			"strict": false,
+			"skills": ["./skills/using-supabase"]
+		},
+		{
+			"name": "vercel-netlify-automation",
+			"description": "Automate file deployment to Vercel and Netlify with a Desktop-like workflow: Git-connected deploys, GitHub Actions, local watchers, and token security.",
+			"source": "./",
+			"strict": false,
+			"skills": ["./skills/vercel-netlify-automation"]
 		}
 	]
 }
