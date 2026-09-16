@@ -1,6 +1,6 @@
 # CONTRIBUTING.md
 
-Thank you for contributing to Supabase Agent Skills! Here's how to get started:
+Thank you for contributing to Agent Skills! Here's how to get started:
 
 [1. Getting Started](#getting-started) | [2. Issues](#issues) |
 [3. Pull Requests](#pull-requests) | [4. Contributing New References](#contributing-new-references) |
@@ -8,9 +8,8 @@ Thank you for contributing to Supabase Agent Skills! Here's how to get started:
 
 ## Getting Started
 
-To ensure a positive and inclusive environment, please read our
-[code of conduct](https://github.com/supabase/.github/blob/main/CODE_OF_CONDUCT.md)
-before contributing.
+To ensure a positive and inclusive environment, please be respectful and
+constructive in all interactions before contributing.
 
 ## Issues
 
@@ -18,7 +17,7 @@ If you find a typo, have a suggestion for a new skill/reference, or want to impr
 existing skills/references, please create an Issue.
 
 - Please search
-  [existing Issues](https://github.com/supabase/agent-skills/issues) before
+  [existing Issues](https://github.com/bpthevenot-hub/agent-skills/issues) before
   creating a new one.
 - Please include a clear description of the problem or suggestion.
 - Tag your issue appropriately (e.g., `bug`, `question`, `enhancement`,
@@ -32,9 +31,9 @@ We actively welcome your Pull Requests! Here's what to keep in mind:
   for it. Link your PR to the related Issue(s).
 - We will always try to accept the first viable PR that resolves the Issue.
 - If you're new, we encourage you to take a look at issues tagged with
-  [good first issue](https://github.com/supabase/agent-skills/labels/good%20first%20issue).
+  [good first issue](https://github.com/bpthevenot-hub/agent-skills/labels/good%20first%20issue).
 - If you're proposing a significant new skill or major changes, please open a
-  [Discussion](https://github.com/orgs/supabase/discussions/new/choose) first to
+  [Discussion](https://github.com/bpthevenot-hub/agent-skills/discussions/new/choose) first to
   gather feedback before investing time in implementation.
 
 ### Pre-Flight Checks

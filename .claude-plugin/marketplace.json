@@ -1,16 +1,15 @@
 {
-	"name": "supabase-agent-skills",
+	"name": "agent-skills",
 	"owner": {
-		"name": "Supabase",
-		"email": "support@supabase.com"
+		"name": "bpthevenot-hub"
 	},
 	"metadata": {
-		"description": "Official Supabase agent skills for Claude Code",
+		"description": "Private agent skills for Supabase and Vercel/Netlify deployment workflows",
 		"version": "1.0.0"
 	},
 	"plugins": [
 		{
-			"name": "postgres-best-practices",
+			"name": "supabase-postgres-best-practices",
 			"description": "Postgres performance optimization and best practices. Use when writing, reviewing, or optimizing Postgres queries, schema designs, or database configurations.",
 			"source": "./",
 			"strict": false,
