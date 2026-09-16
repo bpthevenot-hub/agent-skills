@@ -1,6 +1,7 @@
 {
 	"name": "skills-build",
 	"version": "1.0.0",
+	"private": true,
 	"type": "module",
 	"author": "Supabase",
 	"license": "MIT",

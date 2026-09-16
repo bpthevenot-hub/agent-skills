@@ -163,7 +163,7 @@ function loadMetadata(skillFile: string, skillName: string): Metadata {
 	if (!existsSync(skillFile)) {
 		return {
 			version: "1.0.0",
-			organization: "Supabase",
+			organization: "Private",
 			date: new Date().toLocaleDateString("en-US", {
 				month: "long",
 				year: "numeric",
@@ -179,7 +179,7 @@ function loadMetadata(skillFile: string, skillName: string): Metadata {
 
 	return {
 		version: metadata.version || "1.0.0",
-		organization: metadata.organization || "Supabase",
+		organization: metadata.organization || "Private",
 		date:
 			metadata.date ||
 			new Date().toLocaleDateString("en-US", {

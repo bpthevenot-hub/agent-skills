@@ -1,6 +1,7 @@
 {
 	"name": "supabase-agent-skills",
 	"version": "1.0.0",
+	"private": true,
 	"author": "Supabase",
 	"license": "MIT",
 	"description": "Official Supabase agent skills",
