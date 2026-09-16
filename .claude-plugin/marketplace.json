@@ -1,20 +1,33 @@
 {
-	"name": "supabase-agent-skills",
+	"name": "agent-skills",
 	"owner": {
-		"name": "Supabase",
-		"email": "support@supabase.com"
+		"name": "bpthevenot-hub"
 	},
 	"metadata": {
-		"description": "Official Supabase agent skills for Claude Code",
+		"description": "Private agent skills for Supabase and Vercel/Netlify deployment workflows",
 		"version": "1.0.0"
 	},
 	"plugins": [
 		{
-			"name": "postgres-best-practices",
+			"name": "supabase-postgres-best-practices",
 			"description": "Postgres performance optimization and best practices. Use when writing, reviewing, or optimizing Postgres queries, schema designs, or database configurations.",
 			"source": "./",
 			"strict": false,
-			"skills": ["./skills/postgres-best-practices"]
+			"skills": ["./skills/supabase-postgres-best-practices"]
+		},
+		{
+			"name": "using-supabase",
+			"description": "Private guide for building applications with Supabase: setup, auth, database, storage, edge functions, realtime, client libraries, and CLI.",
+			"source": "./",
+			"strict": false,
+			"skills": ["./skills/using-supabase"]
+		},
+		{
+			"name": "vercel-netlify-automation",
+			"description": "Automate file deployment to Vercel and Netlify with a Desktop-like workflow: Git-connected deploys, GitHub Actions, local watchers, and token security.",
+			"source": "./",
+			"strict": false,
+			"skills": ["./skills/vercel-netlify-automation"]
 		}
 	]
 }
