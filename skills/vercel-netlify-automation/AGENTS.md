@@ -1,7 +1,7 @@
 # Vercel Netlify Automation
 
 **Version 1.0.0**
-Supabase
+Private
 September 2026
 
 > This document is optimized for AI agents and LLMs. Rules are prioritized by performance impact.

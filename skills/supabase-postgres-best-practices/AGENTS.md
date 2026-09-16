@@ -1,7 +1,7 @@
 # Supabase Postgres Best Practices
 
 **Version 1.1.0**
-Supabase
+Private
 January 2026
 
 > This document is optimized for AI agents and LLMs. Rules are prioritized by performance impact.
