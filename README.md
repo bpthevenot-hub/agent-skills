@@ -66,8 +66,8 @@ integrations.
 <details>
 <summary><strong>sora-market</strong></summary>
 
-Sora Market: an AliExpress-style shopping marketplace (catalog, flash
-deals, product detail, cart, wishlist, and demo checkout).
+Build and operate Sora Market, an AliExpress-style shopping marketplace with
+catalog, cart, wishlist, and checkout.
 
 **Use when:**
 

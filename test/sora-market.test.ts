@@ -22,11 +22,33 @@ describe("sora-market skill", () => {
 	it("has valid SKILL.md frontmatter for an AliExpress-style shop", () => {
 		const raw = readFileSync(join(skillDir, "SKILL.md"), "utf8");
 		const { data } = matter(raw);
+		const description =
+			"Build and operate Sora Market, an AliExpress-style shopping marketplace with catalog, cart, wishlist, and checkout.";
 		expect(data.name).toBe("sora-market");
-		expect(String(data.description)).toMatch(/AliExpress/i);
+		expect(String(data.description).replace(/\s+/g, " ").trim()).toMatch(
+			description,
+		);
 		expect(String(data.description)).not.toMatch(/prediction/i);
 		expect(data.metadata?.version).toBe("0.0.0");
-		expect(raw).not.toMatch(/paper-trading|marché de prédiction|payout/i);
+		expect(raw).not.toMatch(/paper-trading|marché de prédiction|payout|order-ticket/i);
+	});
+
+	it("keeps the same shopping-marketplace description in registry copy", () => {
+		const root = join(__dirname, "..");
+		const leftover = /paper-trading|marché de prédiction|payout|order-ticket|prediction market/i;
+		const marketplace = readFileSync(
+			join(root, ".claude-plugin", "marketplace.json"),
+			"utf8",
+		);
+		const readme = readFileSync(join(root, "README.md"), "utf8");
+		expect(marketplace).toContain(
+			"Build and operate Sora Market, an AliExpress-style shopping marketplace with catalog, cart, wishlist, and checkout.",
+		);
+		expect(readme).toContain(
+			"Build and operate Sora Market, an AliExpress-style shopping marketplace with",
+		);
+		expect(marketplace).not.toMatch(leftover);
+		expect(readme).not.toMatch(leftover);
 	});
 
 	it("ships a playable storefront", () => {
