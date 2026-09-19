@@ -25,6 +25,12 @@ python3 -m http.server 4173 --directory skills/sora-market/assets/browser
 Open `http://127.0.0.1:4173/` and run the shopper loop: search → open a
 product → pick a variant → add to cart → checkout.
 
+Deploy the same static storefront:
+
+```bash
+npx vercel --cwd skills/sora-market/assets/browser --prod --yes
+```
+
 ## Core Workflow
 
 1. **Load products** from `products.json`. Do not invent prices in the view.
