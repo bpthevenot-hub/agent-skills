@@ -363,7 +363,14 @@ function render() {
 function addToCart(goCheckout = false) {
 	const product = selectedProduct();
 	const qty = parseQty(state.qty);
-	const error = validateAdd({ product, qty, variantId: state.variantId });
+	const existing = cart.find(
+		(line) => line.productId === product?.id && line.variantId === state.variantId,
+	);
+	const error = validateAdd({
+		product,
+		qty: (existing?.qty ?? 0) + qty,
+		variantId: state.variantId,
+	});
 	if (error) {
 		state.error = error;
 		renderProduct();
