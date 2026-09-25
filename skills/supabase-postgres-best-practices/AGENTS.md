@@ -1,6 +1,6 @@
 # Supabase Postgres Best Practices
 
-**Version 1.1.0**
+**Version 1.1.1**
 Supabase
 January 2026
 

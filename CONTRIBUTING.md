@@ -12,6 +12,16 @@ To ensure a positive and inclusive environment, please read our
 [code of conduct](https://github.com/supabase/.github/blob/main/CODE_OF_CONDUCT.md)
 before contributing.
 
+### Setup
+
+This project uses `pnpm` for dependency management and task execution. Use the
+Node.js version declared in [`.node-version`](/Users/pedrorodrigues/supabase-agent-skills/.node-version),
+then run from the repository root:
+
+```bash
+pnpm install        # Install all npm dependencies
+```
+
 ## Issues
 
 If you find a typo, have a suggestion for a new skill/reference, or want to improve
@@ -39,14 +49,43 @@ We actively welcome your Pull Requests! Here's what to keep in mind:
 
 ### Pre-Flight Checks
 
-Before submitting your PR, please run these checks:
+Before submitting your PR, make sure you have the right tooling and run these
+checks:
 
 ```bash
-npm run validate  # Check reference format and structure
-npm run build     # Generate AGENTS.md from references
+pnpm test         # Run the test suite
 ```
 
-Both commands must complete successfully.
+All commands must complete successfully.
+
+### Releases
+
+Releases are automated via [Release Please](https://github.com/googleapis/release-please). It tracks commits on `main` and opens a release PR when there are releasable changes.
+
+- Use conventional commit prefixes — `fix:` for a patch bump, `feat:` for a minor bump — so Release Please can determine the next version.
+- Release Please opens a release PR on `main` that bumps the repo version, updates the changelog, and bumps `metadata.version` in every skill's `SKILL.md` automatically. You do not need to bump skill versions manually.
+- Merging the release PR triggers GitHub Actions to:
+  1. Create a GitHub release and git tag (e.g. `v0.2.0`)
+  2. Package each directory under `skills/` into its own `.tar.gz` and upload them as release assets
+  3. Dispatch the sync workflow in the Supabase plugin repo so downstream skills are updated immediately
+
+#### Adding a new skill
+
+When you add a new skill, register its `SKILL.md` in `release-please-config.json` under `extra-files` so Release Please keeps its `metadata.version` in sync. Without this, the tarball will still be built and shipped but the skill's version will never be bumped.
+
+```json
+{
+  "type": "generic",
+  "path": "skills/my-skill/SKILL.md",
+  "expressions": ["version: \"([0-9]+\\.[0-9]+\\.[0-9]+)\""]
+}
+```
+
+#### Troubleshooting
+
+> **Release PR in a bad state?** Close it and re-run the workflow from the [Actions tab](https://github.com/supabase/agent-skills/actions/workflows/release-please.yml) → **Run workflow**. Release Please will recreate the PR from scratch.
+
+> **Dispatch to supabase-plugin missed?** This can happen if the release workflow fails partway through. The sync workflow in supabase-plugin runs on a weekly schedule as a fallback, or you can trigger it manually from its [Actions tab](https://github.com/supabase-community/supabase-plugin/actions/workflows/sync-agent-skills.yml) → **Run workflow** and supply the release tag.
 
 ## Contributing New References
 
@@ -56,12 +95,10 @@ To add a reference to an existing skill:
 2. Copy `_template.md` to `{prefix}-{your-reference-name}.md`
 3. Fill in the frontmatter (title, impact, tags)
 4. Write explanation and examples (Incorrect/Correct)
-5. Run validation and build:
-
-```bash
-npm run validate
-npm run build
-```
+5. Run the tests:
+   ```bash
+   pnpm test
+   ```
 
 ## Creating a New Skill
 
@@ -83,9 +120,6 @@ license: MIT
 metadata:
   author: your-org
   version: "1.0.0"
-  organization: Your Org
-  date: January 2026
-  abstract: Detailed description of this skill for the compiled AGENTS.md.
 ---
 
 # My Skill
@@ -114,14 +148,6 @@ Instructions for agents using this skill.
 Name files as `{prefix}-{reference-name}.md` where prefix matches a section.
 
 Example: `first-example-reference.md` for section "First Category"
-
-### 5. Build
-
-```bash
-npm run build
-```
-
-The build system auto-discovers skills by looking for `SKILL.md` files.
 
 ## Questions or Feedback?
 
