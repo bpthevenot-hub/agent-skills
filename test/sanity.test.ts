@@ -17,6 +17,7 @@ const PUBLIC_SKILL_NAMES = [
 	"sora-market",
 	"supabase",
 	"supabase-postgres-best-practices",
+	"vercel-netlify-automation",
 ] as const;
 
 type InstallResult = {
