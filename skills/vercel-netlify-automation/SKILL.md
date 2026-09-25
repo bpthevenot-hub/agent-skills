@@ -5,6 +5,7 @@ license: MIT
 metadata:
   author: bpthevenot-hub
   version: "1.0.0"
+  visibility: private
 ---
 
 # Vercel & Netlify Deployment Automation
