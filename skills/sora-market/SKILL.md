@@ -1,10 +1,6 @@
 ---
 name: sora-market
-description: >
-  Build and operate Sora Market, an AliExpress-style shopping marketplace with
-  catalog, cart, wishlist, and checkout. Use when creating or extending a Sora
-  Market storefront, an AliExpress-like marketplace browser, product cards,
-  shipping badges, a shopping cart, or a demo checkout.
+description: "Build and operate Sora Market, an AliExpress-style shopping marketplace with catalog, cart, wishlist, and checkout."
 metadata:
   author: supabase
   version: "0.0.0"

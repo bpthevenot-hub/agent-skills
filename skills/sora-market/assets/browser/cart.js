@@ -66,6 +66,10 @@ export function upsertLine(cart, line) {
 	);
 }
 
+export function removeLine(cart, key) {
+	return cart.filter((item) => `${item.productId}:${item.variantId}` !== key);
+}
+
 export function setLineQty(cart, key, qty) {
 	if (!Number.isInteger(qty) || qty < 1) {
 		return cart.filter((item) => `${item.productId}:${item.variantId}` !== key);

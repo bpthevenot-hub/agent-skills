@@ -6,6 +6,7 @@ import {
 	formatMoney,
 	parseQty,
 	setLineQty,
+	removeLine,
 	shippingCost,
 	upsertLine,
 	validateAdd,
@@ -200,33 +201,42 @@ function renderProduct() {
 	els.overlay.hidden = false;
 	els.sheet.innerHTML = `
     <div class="sheet-head">
-      <div class="thumb" style="width:120px;height:120px;border-radius:16px;background:${product.accent}22">${product.emoji}</div>
+      <p class="meta">${CATEGORIES.find(([id]) => id === product.category)?.[1] ?? product.category} · ${product.store}</p>
       <button class="close" type="button" data-close>Fermer</button>
     </div>
-    <h2>${product.title}</h2>
-    <p class="price">${formatMoney(product.price)} <span class="compare">${formatMoney(product.compareAt)}</span></p>
-    <p class="meta">★ ${product.rating.toFixed(1)} · ${product.orders.toLocaleString("fr-FR")} commandes · ${product.store}</p>
-    <p class="ship ${product.freeShipping ? "free" : ""}">
-      ${product.freeShipping ? "Livraison gratuite" : `Frais selon panier`} · ${product.shipsFrom} · ${product.deliveryMin}–${product.deliveryMax} jours
-    </p>
-    <div class="variants">
-      ${product.variants
-				.map(
-					(item) =>
-						`<button class="chip" type="button" data-variant="${item.id}" aria-pressed="${item.id === state.variantId}">${item.label}</button>`,
-				)
-				.join("")}
-    </div>
-    <ul>${product.bullets.map((item) => `<li>${item}</li>`).join("")}</ul>
-    <div class="qty-row">
-      <label>Qté <input id="qty" type="number" min="1" max="${product.stock}" value="${state.qty}" /></label>
-      <span>${product.stock} en stock</span>
-    </div>
-    <p class="error">${state.error}</p>
-    <div class="row">
-      <button class="ghost" type="button" data-wish>${wished ? "Retirer des favoris" : "Ajouter aux favoris"}</button>
-      <button class="primary" type="button" data-add>Ajouter au panier${variant ? ` · ${variant.label}` : ""}</button>
-      <button class="primary buy" type="button" data-buy>Acheter</button>
+    <div class="sheet-grid">
+      <div class="thumb" style="height:200px;border-radius:16px;background:${product.accent}22">${product.emoji}</div>
+      <div>
+        <h2>${product.title}</h2>
+        <p class="price">${formatMoney(product.price)} <span class="compare">${formatMoney(product.compareAt)}</span></p>
+        <p class="meta">★ ${product.rating.toFixed(1)} · ${product.orders.toLocaleString("fr-FR")} commandes</p>
+        <p class="ship ${product.freeShipping ? "free" : ""}">
+          ${product.freeShipping ? "Livraison gratuite" : `Frais selon panier`} · ${product.shipsFrom} · ${product.deliveryMin}–${product.deliveryMax} jours
+        </p>
+        <div class="variants">
+          ${product.variants
+						.map(
+							(item) =>
+								`<button class="chip" type="button" data-variant="${item.id}" aria-pressed="${item.id === state.variantId}">${item.label}</button>`,
+						)
+						.join("")}
+        </div>
+        <ul>${product.bullets.map((item) => `<li>${item}</li>`).join("")}</ul>
+        <div class="qty-row">
+          <div class="stepper">
+            <button type="button" data-qty-step="-1" aria-label="Diminuer">−</button>
+            <input id="qty" type="number" min="1" max="${product.stock}" value="${state.qty}" />
+            <button type="button" data-qty-step="1" aria-label="Augmenter">+</button>
+          </div>
+          <span>${product.stock} en stock</span>
+        </div>
+        <p class="error">${state.error}</p>
+        <div class="row">
+          <button class="ghost" type="button" data-wish>${wished ? "Retirer des favoris" : "Ajouter aux favoris"}</button>
+          <button class="primary" type="button" data-add>Ajouter au panier${variant ? ` · ${variant.label}` : ""}</button>
+          <button class="primary buy" type="button" data-buy>Acheter</button>
+        </div>
+      </div>
     </div>
   `;
 }
@@ -262,10 +272,13 @@ function renderCart() {
             <div>
               <strong>${product?.title ?? "Article retiré"}</strong>
               <p class="meta">${line.variantLabel} · ${formatMoney(line.price)}</p>
+              <button class="danger" type="button" data-remove="${key}">Supprimer</button>
             </div>
-            <label>Qté
+            <div class="stepper">
+              <button type="button" data-line-step="${key}" data-delta="-1" aria-label="Diminuer">−</button>
               <input data-qty="${key}" type="number" min="1" max="${product?.stock ?? line.qty}" value="${line.qty}" />
-            </label>
+              <button type="button" data-line-step="${key}" data-delta="1" aria-label="Augmenter">+</button>
+            </div>
             <strong>${formatMoney(line.price * line.qty)}</strong>
           </div>`;
 			})
@@ -308,12 +321,16 @@ function renderCheckout() {
 	els.page.innerHTML = `
     <h2>Commande</h2>
     <p class="meta">Paiement démo — aucune carte n’est débitée.</p>
+    <p>${cart.map((line) => `${line.title} ×${line.qty}`).join(" · ")}</p>
     <p>Total à payer : <strong>${formatMoney(cartTotal(cart))}</strong></p>
     <label>Nom<input id="name" value="${state.checkout.name}" /></label>
     <label>Ville<input id="city" value="${state.checkout.city}" /></label>
     <label>Adresse<input id="address" value="${state.checkout.address}" /></label>
     <p class="error">${state.error}</p>
-    <button class="primary buy" type="button" data-place>Confirmer la commande</button>
+    <div class="row">
+      <button class="ghost" type="button" data-view="cart">Retour panier</button>
+      <button class="primary buy" type="button" data-place>Confirmer la commande</button>
+    </div>
   `;
 }
 
@@ -340,7 +357,7 @@ function renderOrders() {
         <article class="cart-line">
           <div>
             <strong>${order.id}</strong>
-            <p class="meta">${new Date(order.createdAt).toLocaleString("fr-FR")} · ${order.city}</p>
+            <p class="meta">${new Date(order.createdAt).toLocaleString("fr-FR")} · ${order.city} · Expédiée (démo)</p>
             <p>${order.lines.map((line) => `${line.title} ×${line.qty}`).join(" · ")}</p>
           </div>
           <strong>${formatMoney(order.total)}</strong>
@@ -353,6 +370,7 @@ function renderOrders() {
 function render() {
 	renderHeader();
 	renderCats();
+	els.cats.hidden = ["cart", "checkout", "orders"].includes(state.view);
 	if (state.view === "cart") return renderCart();
 	if (state.view === "wishlist") return renderWishlist();
 	if (state.view === "checkout") return renderCheckout();
@@ -507,6 +525,14 @@ function bind() {
 			renderProduct();
 			return;
 		}
+		const step = event.target.closest("[data-qty-step]");
+		if (step) {
+			const next = (parseQty(state.qty) || 1) + Number(step.dataset.qtyStep);
+			const product = selectedProduct();
+			state.qty = String(Math.min(product?.stock ?? next, Math.max(1, next)));
+			renderProduct();
+			return;
+		}
 		if (event.target.closest("[data-wish]")) return toggleWish(state.selectedId);
 		if (event.target.closest("[data-add]")) return addToCart(false);
 		if (event.target.closest("[data-buy]")) return addToCart(true);
@@ -522,7 +548,30 @@ function bind() {
 			render();
 			return;
 		}
+		const remove = event.target.closest("[data-remove]");
+		if (remove) {
+			cart = removeLine(cart, remove.dataset.remove);
+			saveAll();
+			render();
+			return;
+		}
+		const lineStep = event.target.closest("[data-line-step]");
+		if (lineStep) {
+			const input = els.page.querySelector(`[data-qty="${lineStep.dataset.lineStep}"]`);
+			const next = (parseQty(input?.value) || 1) + Number(lineStep.dataset.delta);
+			cart = setLineQty(cart, lineStep.dataset.lineStep, next);
+			saveAll();
+			render();
+			return;
+		}
 		if (event.target.closest("[data-place]")) placeOrder();
+	});
+	document.querySelector(".footer").addEventListener("click", (event) => {
+		const button = event.target.closest("[data-view]");
+		if (!button) return;
+		state.view = button.dataset.view;
+		state.selectedId = null;
+		render();
 	});
 	els.page.addEventListener("input", (event) => {
 		if (event.target.id === "name") state.checkout.name = event.target.value;

@@ -10,6 +10,7 @@ import {
 	discountPercent,
 	parseQty,
 	shippingCost,
+	removeLine,
 	upsertLine,
 	validateAdd,
 	validateCheckout,
@@ -67,6 +68,7 @@ describe("sora-market skill", () => {
 		expect(html).toContain('id="grid"');
 		expect(html).toContain('data-view="cart"');
 		expect(html).toContain('id="overlay"');
+		expect(html).toContain("footer");
 		expect(html).not.toContain("paper trading");
 	});
 
@@ -143,6 +145,16 @@ describe("sora-market cart math", () => {
 		expect(cartCount(merged)).toBe(3);
 		expect(cartSubtotal(merged)).toBe(30);
 		expect(cartTotal(merged)).toBe(30);
+	});
+
+	it("removes a cart line", () => {
+		const cart = [
+			{ productId: "p-1", variantId: "black", price: 10, qty: 1 },
+			{ productId: "p-2", variantId: "s", price: 12, qty: 1 },
+		];
+		expect(removeLine(cart, "p-1:black")).toEqual([
+			{ productId: "p-2", variantId: "s", price: 12, qty: 1 },
+		]);
 	});
 
 	it("blocks empty checkout", () => {
