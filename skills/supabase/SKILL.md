@@ -170,3 +170,14 @@ Do NOT use `apply_migration` to change a local database schema — it writes a m
 
 - **Skill Feedback** → [references/skill-feedback.md](references/skill-feedback.md)
   **MUST read when** the user reports that this skill gave incorrect guidance or is missing information.
+
+### Client and authorization examples
+
+Read these before implementing the matching integration:
+- [Browser singleton and request-scoped SSR cookies](references/client-singleton.md).
+- [Private Realtime Broadcast authorization](references/realtime-authorization.md).
+- [Private storage and signed URLs](references/storage-private-buckets.md).
+
+These examples consolidate the useful reference material from the older
+`using-supabase` proposal into this canonical skill. Adapt and test the access
+model in the target project; no example is a production migration by itself.
