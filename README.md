@@ -64,6 +64,26 @@ integrations.
 </details>
 
 <details>
+<summary><strong>sora-market</strong></summary>
+
+Build and operate Sora Market, an AliExpress-style shopping marketplace with
+catalog, cart, wishlist, and checkout.
+
+**Use when:**
+
+- Building or extending a Sora Market / AliExpress-like storefront
+- Implementing product cards, search, shipping badges, or a cart
+- Verifying marketplace UX in a real browser
+
+Serve the UI with:
+
+```bash
+python3 -m http.server 4173 --directory skills/sora-market/assets/browser
+```
+
+</details>
+
+<details>
 <summary><strong>supabase-postgres-best-practices</strong></summary>
 
 Postgres performance optimization guidelines from Supabase. Contains references

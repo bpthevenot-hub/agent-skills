@@ -1,6 +1,10 @@
 ---
 name: supabase
-description: "Use when doing ANY task involving Supabase. Triggers: Supabase products (Database, Auth, Edge Functions, Realtime, Storage, Vectors, Cron, Queues); client libraries and SSR integrations (supabase-js, @supabase/ssr) in Next.js, React, SvelteKit, Astro, Remix; auth issues (login, logout, sessions, JWT, cookies, getSession, getUser, getClaims, RLS); Supabase CLI or MCP server; schema changes, migrations, security audits, Postgres extensions (pg_graphql, pg_cron, pg_vector)."
+description: >
+  Use for tasks involving Supabase products (Database, Auth, Edge Functions,
+  Realtime, Storage, Vectors, Cron, Queues), supabase-js or @supabase/ssr
+  integrations, auth/session/RLS issues, Supabase CLI or MCP usage, and schema
+  migrations or Postgres extension work.
 metadata:
   author: supabase
   version: "0.1.2"
@@ -22,21 +26,39 @@ After implementing any fix, run a test query to confirm the change works. A fix 
 If an approach fails after 2-3 attempts, stop and reconsider. Try a different method, check documentation, inspect the error more carefully, and review relevant logs when available. Supabase issues are not always solved by retrying the same command, and the answer is not always in the logs, but logs are often worth checking before proceeding.
 
 **4. Exposing new tables to the Data API.**
-When you create a new table in `public` that needs to be exposed to the Data API and the client libraries, emit `GRANT` statements alongside `CREATE TABLE` and `ENABLE ROW LEVEL SECURITY`. The grants are idempotent: if the project still has default permissions applied to tables in the `public` schema, the explicit `GRANT` is a no-op; if defaults have been revoked (the new platform default), the explicit `GRANT` is required for the table to be reachable via the Data API.
+When you create a new table in `public` that needs to be exposed to the Data API and the client libraries, emit `GRANT` statements alongside `CREATE TABLE` and `ENABLE ROW LEVEL SECURITY`. The grants are idempotent: if the project still has default permissions applied to tables in the `public` schema, the explicit `GRANT` is a no-op; if those defaults have been revoked, the explicit `GRANT` is required for the table to be reachable via the Data API.
 
 Grants and RLS are separate layers. Grants decide whether the table is reachable at all; RLS decides which rows are visible once it is. A table without RLS exposes every row to whoever has the grant. 
 
-Canonical block for a table that should be Data-API facing for authenticated and service_role:
+Example for private, user-owned reports: signed-in users manage only their own
+rows, while a trusted server may use `service_role`. Keep its key server-side.
+Adapt this access model to the actual application before applying it.
+
 ```sql
-create table public.your_table (...);
-alter table public.your_table enable row level security;
+begin;
+create table public.reports (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id),
+  body text not null
+);
+alter table public.reports enable row level security;
 
-grant select on public.your_table to anon;
-grant select, insert, update, delete on public.your_table to authenticated;
-grant select, insert, update, delete on public.your_table TO service_role;
+-- Remove inherited/default client grants before allowing intended operations.
+revoke all privileges on table public.reports from public, anon, authenticated;
+grant usage on schema public to authenticated, service_role;
+grant select, insert, update, delete on public.reports to authenticated, service_role;
 
-create policy "..." on public.your_table for ... to ... using (...);
+create policy "Users manage their own reports"
+  on public.reports for all to authenticated
+  using ((select auth.uid()) = user_id)
+  with check ((select auth.uid()) = user_id);
+commit;
 ```
+
+Do not grant `anon` access for an authenticated-only feature. For deliberately
+public data, add only the required `anon` operation and a matching policy.
+Verify allow/deny behavior for signed-out requests, the owner, another user, and
+the trusted backend using `supabase test db` before deploying schema changes.
 
 A table without `GRANT` returns SQLSTATE `42501` from PostgREST with a `Grant the required privileges to the current role with: GRANT ... ON ... TO ...;` hint in the response. 
 
@@ -71,7 +93,7 @@ When working on any Supabase task that touches auth, RLS, views, storage, or use
     to authenticated
     using ( (select auth.uid()) = user_id );
     ```
-  - **UPDATE policies require both `USING` and `WITH CHECK`.** Without `WITH CHECK`, a user can reassign a row's `user_id` to another user:
+  - **Write `USING` and `WITH CHECK` explicitly for ownership policies.** `USING` filters existing rows and `WITH CHECK` validates the new row. If `WITH CHECK` is omitted for an `ALL` or `UPDATE` policy, PostgreSQL reuses `USING`; an explicit clause makes the intended ownership rule clear:
     ```sql
     create policy "example" on table_name for update
     to authenticated
@@ -83,6 +105,9 @@ When working on any Supabase task that touches auth, RLS, views, storage, or use
 
 - **Storage access control**
   - **Storage upsert requires INSERT + SELECT + UPDATE.** Granting only INSERT allows new uploads but file replacement (upsert) silently fails. You need all three.
+
+- **Dependency and supply-chain security**
+  - **Always pin package versions and commit lockfiles** when installing Supabase packages (`supabase-js`, `@supabase/ssr`, `supabase-py`, etc.). See the [npm security guide](https://supabase.com/docs/guides/security/npm-security.md) for the full checklist.
 
 For any security concern not covered above, fetch the Supabase product security index: `https://supabase.com/docs/guides/security/product-security.md`
 

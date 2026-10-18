@@ -22,6 +22,13 @@
 			"source": "./",
 			"strict": false,
 			"skills": ["./skills/supabase-postgres-best-practices"]
+		},
+		{
+			"name": "sora-market",
+			"description": "Build and operate Sora Market, an AliExpress-style shopping marketplace with catalog, cart, wishlist, and checkout.",
+			"source": "./",
+			"strict": false,
+			"skills": ["./skills/sora-market"]
 		}
 	]
 }

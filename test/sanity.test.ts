@@ -3,15 +3,18 @@ import {
 	cpSync,
 	existsSync,
 	mkdtempSync,
+	readFileSync,
 	readdirSync,
 	rmSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import matter from "gray-matter";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const SKILLS_DIR = join(__dirname, "..", "skills");
 const PUBLIC_SKILL_NAMES = [
+	"sora-market",
 	"supabase",
 	"supabase-postgres-best-practices",
 ] as const;
@@ -86,6 +89,41 @@ function runSkillsAdd(sourceDir: string, skillName?: string): InstallResult {
 	};
 }
 
+const CONFLICT_MARKER = /^(<<<<<<< |=======$|>>>>>>> )/m;
+
+describe("skill manifests", () => {
+	const skillNames = discoverSkillNames().sort();
+
+	it("discovers the public skills", () => {
+		expect(skillNames).toEqual([...PUBLIC_SKILL_NAMES]);
+	});
+
+	it.each(PUBLIC_SKILL_NAMES)(
+		"%s SKILL.md has parseable frontmatter and no conflict markers",
+		(skillName) => {
+			const skillMdPath = join(SKILLS_DIR, skillName, "SKILL.md");
+			const raw = readFileSync(skillMdPath, "utf8");
+
+			expect(
+				CONFLICT_MARKER.test(raw),
+				`${skillName} SKILL.md contains unresolved merge conflict markers`,
+			).toBe(false);
+			expect(
+				raw.startsWith("---\n"),
+				`${skillName} SKILL.md must start with YAML frontmatter`,
+			).toBe(true);
+
+			const { data } = matter(raw);
+			expect(data.name).toBe(skillName);
+			expect(data.description).toEqual(expect.any(String));
+			expect(String(data.description).length).toBeGreaterThan(0);
+
+			const metadata = data.metadata as { version?: unknown } | undefined;
+			expect(metadata?.version).toMatch(/^\d+\.\d+\.\d+$/);
+		},
+	);
+});
+
 describe("skills add sanity check", () => {
 	let publicSourceDir: string;
 	let installAllResult: InstallResult;
@@ -105,7 +143,7 @@ describe("skills add sanity check", () => {
 		}
 	});
 
-	it("should discover exactly the two public skills", () => {
+	it("should discover exactly the public skills", () => {
 		expect(skillNames).toEqual([...PUBLIC_SKILL_NAMES]);
 		console.log(
 			`Discovered ${skillNames.length} skills: ${skillNames.join(", ")}`,
@@ -123,7 +161,7 @@ describe("skills add sanity check", () => {
 		expect(installAllResult.commandExitCode).toBe(0);
 	});
 
-	it("should install exactly the two public skills when installing all", () => {
+	it("should install exactly the public skills when installing all", () => {
 		expect(installAllResult.installedSkillNames).toEqual([...PUBLIC_SKILL_NAMES]);
 	});
 
