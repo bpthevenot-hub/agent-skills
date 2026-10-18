@@ -69,6 +69,17 @@ Releases are automated via [Release Please](https://github.com/googleapis/releas
   2. Package each directory under `skills/` into its own `.tar.gz` and upload them as release assets
   3. Dispatch the sync workflow in the Supabase plugin repo so downstream skills are updated immediately
 
+The release workflow uses a GitHub App when both `GH_APP_ID` and
+`GH_APP_PRIVATE_KEY` secrets are configured; otherwise it uses the repository's
+`GITHUB_TOKEN`. For the fallback, enable **Settings → Actions → General → Workflow
+permissions → Allow GitHub Actions to create and approve pull requests**.
+PRs created with `GITHUB_TOKEN` do not trigger other workflows automatically;
+configure the App credentials if release PRs need automatic CI checks.
+
+Plugin sync runs only in `supabase/agent-skills`, when both
+`GH_APP_ID_SUPABASE_PLUGIN` and `GH_APP_PRIVATE_KEY_SUPABASE_PLUGIN` are configured.
+Fork releases do not dispatch workflows in the upstream plugin repository.
+
 #### Adding a new skill
 
 When you add a new skill, register its `SKILL.md` in `release-please-config.json` under `extra-files` so Release Please keeps its `metadata.version` in sync. Without this, the tarball will still be built and shipped but the skill's version will never be bumped.

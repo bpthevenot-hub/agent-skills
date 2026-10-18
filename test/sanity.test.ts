@@ -91,6 +91,67 @@ function runSkillsAdd(sourceDir: string, skillName?: string): InstallResult {
 
 const CONFLICT_MARKER = /^(<<<<<<< |=======$|>>>>>>> )/m;
 
+describe("release workflow authentication", () => {
+	const raw = readFileSync(
+		join(__dirname, "..", ".github", "workflows", "release.yml"),
+		"utf8",
+	);
+	const { data: workflow } = matter(`---\n${raw}\n---`);
+	const release = workflow.jobs.release;
+	const steps = release.steps as Array<{
+		id?: string;
+		name?: string;
+		if?: string;
+		with?: Record<string, string>;
+		env?: Record<string, string>;
+	}>;
+
+	it("requires both credentials before generating a release App token", () => {
+		expect(release.env.HAS_RELEASE_APP).toBe(
+			"${{ secrets.GH_APP_ID != '' && secrets.GH_APP_PRIVATE_KEY != '' }}",
+		);
+		const step = steps.find((step) => step.id === "generate-token");
+		expect(step?.if).toBe("${{ env.HAS_RELEASE_APP == 'true' }}");
+		expect(step?.with).toMatchObject({
+			"client-id": "${{ secrets.GH_APP_ID }}",
+			"private-key": "${{ secrets.GH_APP_PRIVATE_KEY }}",
+		});
+	});
+
+	it("uses the App token or the repository token for releases and uploads", () => {
+		const token = "${{ steps.generate-token.outputs.token || github.token }}";
+		expect(steps.find((step) => step.id === "release")?.with?.token).toBe(token);
+		expect(
+			steps.find((step) => step.name === "Upload release assets")?.env?.GITHUB_TOKEN,
+		).toBe(token);
+		expect(workflow.permissions).toMatchObject({
+			contents: "write",
+			"pull-requests": "write",
+		});
+	});
+
+	it("requires an upstream release and both credentials for the plugin App", () => {
+		expect(release.env.HAS_PLUGIN_APP).toBe(
+			"${{ secrets.GH_APP_ID_SUPABASE_PLUGIN != '' && secrets.GH_APP_PRIVATE_KEY_SUPABASE_PLUGIN != '' }}",
+		);
+		expect(steps.find((step) => step.id === "generate-token-plugin")?.if).toBe(
+			"${{ steps.release.outputs.release_created && github.repository == 'supabase/agent-skills' && env.HAS_PLUGIN_APP == 'true' }}",
+		);
+	});
+
+	it("does not dispatch plugin sync without a plugin token", () => {
+		const step = steps.find(
+			(step) => step.name === "Trigger supabase-plugin skill sync",
+		);
+		expect(step?.if).toBe(
+			"${{ steps.release.outputs.release_created && steps.generate-token-plugin.outputs.token != '' }}",
+		);
+		expect(step?.env?.GH_TOKEN).toBe(
+			"${{ steps.generate-token-plugin.outputs.token }}",
+		);
+	});
+});
+
 describe("skill manifests", () => {
 	const skillNames = discoverSkillNames().sort();
 
